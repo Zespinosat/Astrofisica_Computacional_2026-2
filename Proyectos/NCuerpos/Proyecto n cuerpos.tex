@@ -1,0 +1,718 @@
+\documentclass[11pt, a4paper]{article}
+\usepackage[a4paper, margin=2.5cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{lmodern}
+\usepackage{amsmath, amssymb}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+% --- PAQUETES MATEMÁTICOS ---
+\usepackage{amsmath,amssymb,amsfonts,amsthm}
+\usepackage{bm}
+\usepackage{physics}
+
+% --- PAQUETES VISUALES Y TABLAS ---
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{microtype}
+\usepackage{hyperref}
+
+\hypersetup{
+	colorlinks=true,
+	linkcolor=blue!70!black,
+	citecolor=blue!70!black,
+	urlcolor=blue!70!black
+}
+
+% --- CONFIGURACIÓN DE TÍTULOS ---
+\title{\textbf{Proyecto: Simulación del Problema Gravitacional de $N$ Cuerpos}\\
+	\large Primer Proyecto para la Materia Astrofísica Computacional}
+\author{\textbf{Zeuz Alejandro Espinosa Tobar}}
+\date{\today}
+
+\begin{document}
+	
+	\maketitle
+	
+	\hrule
+	\vspace{0.5cm}
+	
+	\vspace{0.5cm}
+	\hrule
+	\section{Fase I: Formalismo Matemático y Diferenciación Numérica}
+	En esta sección se encuentra mi sufrimiento al intentar desarrollar el sustento analítico necesario para la primera parte, la justificación de la formula general para la diferenciación numérica usando la interpolación de Lagrange.
+	
+	% ==============================================================================
+	\subsection{Base Polinomial de Interpolación de Lagrange}
+	% ==============================================================================
+	
+	Consideremos una función $f(x)$, si esta se muestrea sobre una malla discreta compuesta por $n+1$ nodos equiespaciados $\{x_0, x_1, \dots, x_n\}$. La distancia constante entre nodos consecutivos se define como el paso de malla $h = x_{j+1} - x_j$. 
+	
+	Para expresar la posición de un punto continuo $x$ de forma adimensional, se introduce la transformación de variable $s$:
+	
+	\begin{equation}
+		x(s) = x_0 + s h \implies x - x_j = (s - j) h  \footnote{Esta notación está definida explícitamente para que el lector no se confunda, como hizo el autor durante al menos 30 min de confusión pura, a la hora de deducir la Ec.~(\ref{eq:pi_prime_node}).} 
+		\label{eq:notación}
+	\end{equation}
+	
+	Ahora, sea el polinomio de interpolación de Lagrange de grado $n$, denotado como $P_n(x)$, se define como la combinación lineal de los valores de la función en los nodos $f_j = f(x_j)$:
+	
+	\begin{equation}
+		f(x) \approx P_n(x) = \sum_{j=0}^{n} l_j(x) f_j
+		\label{eq:lagrange_poly}
+	\end{equation}
+	
+	Donde la expresión explícita de la base es:
+	
+	\begin{equation}
+		l_j(x) = \frac{\pi(x)}{(x - x_j) \pi'(x_j)}
+		\label{eq:base_lagrange_def}
+	\end{equation}
+	
+	Aquí, $\pi(x)$ representa el \textit{Polinomio Productorio Nodal}, definido como:
+	\begin{equation}
+		\pi(x) = \prod_{k=0}^{n} (x - x_k)
+	\end{equation}
+	
+	Sustituyendo el cambio de variable $x - x_k = (s - k)h$, se puede reescribir el productorio en términos del parámetro adimensional $s$:
+	
+	\begin{equation}
+		\pi(s) = \prod_{k=0}^{n} (s - k)h = h^{n+1} \prod_{k=0}^{n} (s - k)
+		\label{eq:productorio_s}
+	\end{equation}
+	
+	Para evaluar el denominador de la Ec.~(\ref{eq:base_lagrange_def}), se hla la derivada de $\pi(x)$ respecto a $x$ evaluada explícitamente en el nodo $x_j$:
+	\begin{equation}
+		\pi'(x_j) = \left. \frac{d\pi(x)}{dx} \right|_{x=x_j} = \left. \frac{ d \left( \prod_{k=0}^{n} (x - x_k) \right) }{dx} \right|_{x=x_j} = \prod_{\substack{k=0 \\ k \neq j}}^{n} (x_j - x_k)
+	\end{equation}
+	
+	Sustituyendo $x_j - x_k = (j - k)h$ \footnote{En caso de haber dudas con la sustitución, como tuvo el autor durante la madrugada, revisar la notación usada en la Ec. (\ref{eq:notación})}:
+	\begin{align}
+		\pi'(x_j) &= \prod_{\substack{k=0 \\ k \neq j}}^{n} (j - k)h \nonumber \footnotemark \\
+		&= h^n \left[ \prod_{k=0}^{j-1} (j - k) \right] \cdot \left[ \prod_{k=j+1}^{n} (j - k) \right]
+	\end{align}
+	
+	\footnotetext{En este paso se separa el productorio en la parte antes y después del término que se salta en $k=j$.}
+	
+	Hallando el resultado de los dos productorios resultantes por separado:
+	\begin{enumerate}
+		\item El primer productorio es simplemente $j!$ \footnote{Esto puede ser comprobado haciendo un cambio de índice $i = j - k \implies i \in [1, j]$}
+		\item Por otro lado, el segundo productorio contiene $n-j$ términos negativos:
+		\begin{equation}
+			\prod_{k=j+1}^{n} (j - k) = (-1) \cdot (-2) \cdot \dots \cdot (-(n-j)) = (-1)^{n-j} (n-j)!
+		\end{equation}
+	\end{enumerate}
+	
+	Multiplicando ambas contribuciones, obtenemos la forma cerrada de la derivada del productorio en el nodo:
+	\begin{equation}
+		\pi'(x_j) = h^n (-1)^{n-j} j! (n-j)!
+		\label{eq:pi_prime_node}
+	\end{equation}
+	
+	% ==============================================================================
+	\subsection{Deducción de la Fórmula General de Diferenciación Numérica de n Puntos}
+	% ==============================================================================
+	
+	Para calcular la primera derivada de la función $f'(x) \approx P_n'(x)$, se usa la regla de la cadena respecto a la variable adimensional $s$:
+	\begin{equation}
+		f'(x) = \frac{d P_n(x)}{dx} = \frac{d P_n(s)}{ds} \frac{ds}{dx} \footnotemark = \frac{1}{h} \frac{d}{ds} \left[ \sum_{j=0}^{n} l_j(s) f_j \right] = \frac{1}{h} \sum_{j=0}^{n} l_j'(s) f_j
+		\label{eq:chain_rule_diff}
+	\end{equation}
+	
+	\footnotetext{Para hallar la derivada $\frac{ds}{dx}$, se despeja $s$ en la expresión $x - x_k = (s - k)h$, resultando en $s = \frac{x-x_k}{h}+k$}
+	
+	Sustituyendo la Ec.~(\ref{eq:productorio_s}) y la Ec.~(\ref{eq:pi_prime_node}) en la definición de la base de Lagrange $l_j(s)$:
+	\begin{align}
+		l_j(s) &= \frac{h^{n+1} \prod_{k=0}^{n} (s - k)}{(s - j)h \cdot h^n (-1)^{n-j} j! (n-j)!} \nonumber \\
+		&= \frac{(-1)^{n-j}}{j! (n-j)!} \frac{\prod_{k=0}^{n} (s - k)}{s - j}
+	\end{align}
+	
+	Si se define el polinomio reducido $Q_j(s) = \frac{\prod_{k=0}^{n} (s - k)}{s - j}$\footnote{Este se define dado que la otra parte de la expresión para $l_j (s)$ no depende de $s$.}. Al expandir, este polinomio de grado $n$ en potencias de $s$, se obtiene la expresión:
+	
+	\begin{equation}
+		Q_j(s) = \frac{1}{a_{jn}} \sum_{k=0}^{n} a_{jk} s^k
+	\end{equation}
+	
+	donde $a_{jk}$ son los coeficientes algebraicos de la expansión polinomial.
+	
+	Derivando $Q_j(s)$ término a término con respecto a $s$:
+	\begin{equation}
+		\frac{d Q_j(s)}{ds} = \frac{1}{a_{jn}} \sum_{k=1}^{n} k a_{jk} s^{k-1}
+	\end{equation}
+	
+	Sustituyendo esta derivada dentro de la suma general de la Ec.~(\ref{eq:chain_rule_diff}) y aislando el término inicial $j=0$ de la sumatoria principal, se obtiene la \textbf{\textit{Fórmula General de Diferenciación Numérica de n Puntos}}:
+	\begin{equation}
+		f'(x) = \frac{1}{h} \left[ \frac{(-1)^{n}}{n! a_{0n}} \left( \sum_{k=1}^{n} k a_{0k} s^{k-1} \right) f_0 + \sum_{j=1}^{n} \left\{ \frac{(-1)^{n-j}}{j!(n-j)! a_{jn}} \left( \sum_{k=1}^{n} k a_{jk} s^{k-1} \right) \right\} f_j \right]
+		\label{eq:general_num_diff}
+	\end{equation}
+	
+	% ==============================================================================
+	\subsection{Deducción Detallada de la Fórmula de 3 Puntos para la Primera Derivada ($n=2$)}
+	% ==============================================================================
+	
+	Considerando el caso particular de un estarcido de 3 puntos ($n=2$) definido por los nodos $x_0$, $x_1 = x_0 + h$ y $x_2 = x_0 + 2h$. Las distancias relativas en términos de $s$ son:
+	\begin{align}
+		x - x_0 &= s h \\
+		x - x_1 &= (s - 1) h \\
+		x - x_2 &= (s - 2) h
+	\end{align}
+	
+	Construyendo de manera explícita cada uno de los tres polinomios de la base de Lagrange \footnote{Dado que es más sencillo que usar directamente la expresión de la Ec. (\ref{eq:general_num_diff})} $l_j(s)$ para $j \in \{0, 1, 2\}$:
+	
+	\paragraph{1. Polinomio Base para $j=0$:}
+	\begin{align}
+		l_0(s) &= \frac{(x - x_1)(x - x_2)}{(x_0 - x_1)(x_0 - x_2)} = \frac{(s - 1)h \cdot (s - 2)h}{(-h) \cdot (-2h)} = \frac{(s - 1)(s - 2)}{2} = \frac{s^2 - 3s + 2}{2}
+	\end{align}
+	
+	\paragraph{2. Polinomio Base para $j=1$:}
+	\begin{align}
+		l_1(s) &= \frac{(x - x_0)(x - x_2)}{(x_1 - x_0)(x_1 - x_2)} = \frac{(s)h \cdot (s - 2)h}{(h) \cdot (-h)} = \frac{s(s - 2)}{-1} = -s^2 + 2s
+	\end{align}
+	
+	\paragraph{3. Polinomio Base para $j=2$:}
+	\begin{align}
+		l_2(s) &= \frac{(x - x_0)(x - x_1)}{(x_2 - x_0)(x_2 - x_1)} = \frac{(s)h \cdot (s - 1)h}{(2h) \cdot (h)} = \frac{s(s - 1)}{2} = \frac{s^2 - s}{2}
+	\end{align}
+	
+	Procedemos a calcular la derivada ordinaria con respecto a $s$ de cada polinomio de la base:
+	\begin{align}
+		\frac{d l_0(s)}{ds} &= \frac{d}{ds} \left( \frac{s^2 - 3s + 2}{2} \right) = \frac{2s - 3}{2} \label{eq:dl0_ds} \\
+		\frac{d l_1(s)}{ds} &= \frac{d}{ds} \left( -s^2 + 2s \right) = -2s + 2 = 2(1 - s) \label{eq:dl1_ds} \\
+		\frac{d l_2(s)}{ds} &= \frac{d}{ds} \left( \frac{s^2 - s}{2} \right) = \frac{2s - 1}{2} \label{eq:dl2_ds}
+	\end{align}
+	
+	Sustituyendo las derivadas de las bases (\ref{eq:dl0_ds}), (\ref{eq:dl1_ds}) y (\ref{eq:dl2_ds}) en la regla de la cadena $f'(x) = \frac{1}{h} \left[ l_0'(s) f_0 + l_1'(s) f_1 + l_2'(s) f_2 \right]$:
+	\begin{align}
+		f'(x) &= \frac{1}{h} \left[ \left( \frac{2s - 3}{2} \right) f_0 + 2(1 - s) f_1 + \left( \frac{2s - 1}{2} \right) f_2 \right] \nonumber \\
+		&= \frac{1}{2h} \left[ (-3 + 2s) f_0 + 4(1 - s) f_1 + (-1 + 2s) f_2 \right]
+	\end{align}
+	Demostrando así la \textit{Fórmula General de 3 Puntos para la Primera Derivada}:
+	\begin{equation}
+		f'(x) = \frac{(-3 + 2s) f_0 + 4(1 - s) f_1 + (-1 + 2s) f_2}{2h}
+		\label{eq:three_point_first_deriv}
+	\end{equation}
+	
+	% ==============================================================================
+	\subsection{Demostración: La Diferencia Central Estándar como Caso Especial ($s=1$)}
+	% ==============================================================================
+	
+	\begin{proof}
+		Si se desea evaluar la primera derivada $f'(x)$ exactamente en el punto medio del estarcido, es decir, en el nodo central $x = x_1$. De la definición $x = x_0 + s h$, esto implica hacer $x_1 = x_0 + s h \implies s = 1$.
+		
+		Sustituyendo de forma explícita el valor $s = 1$ en la ecuación general de 3 puntos (\ref{eq:three_point_first_deriv}):
+		
+		\begin{align}
+			f'(x_1) &= \frac{(-3 + 2(1)) f_0 + 4(1 - (1)) f_1 + (-1 + 2(1)) f_2}{2h} \nonumber \\			
+			&= \frac{(-3 + 2) f_0 + 4(0) f_1 + (-1 + 2) f_2}{2h} \nonumber \\
+			&= \frac{(-1) f_0 + 0 \cdot f_1 + (1) f_2}{2h} \nonumber \\
+			&= \frac{f_2 - f_0}{2h}
+		\end{align}
+		
+		Queda demostrado matemáticamente que la fórmula estándar de diferencia finita central centrada en $x_1$ es el caso particular idéntico de la expresión general cuando $s=1$.
+		
+	\end{proof}
+	
+	% ==============================================================================
+	\subsection{Deducción de la Segunda Derivada Numérica de 3 Puntos ($n=2$)}
+	% ==============================================================================
+	
+	Para determinar la aproximación finita de la segunda derivada $f''(x)$, se deriva sobre la primera derivada utilizando la regla de la cadena:
+	
+	\begin{equation}
+		f''(x) = \frac{d}{dx} \left[ f'(x) \right] = \frac{d}{ds} \left[ \frac{1}{h} \sum_{j=0}^{2} l_j'(s) f_j \right] \frac{ds}{dx} \footnotemark = \frac{1}{h^2} \sum_{j=0}^{2} l_j''(s) f_j
+	\end{equation}
+	
+	\footnotetext{Se hace uso nuevamente del hecho que $\frac{ds}{dx}  = \frac{1}{h}$.}
+	
+	Calculando la segunda derivada ordinaria respecto a $s$ para cada una de las tres funciones base\footnote{Halladas en (\ref{eq:dl0_ds}), (\ref{eq:dl1_ds}) y (\ref{eq:dl2_ds}) .}:
+	
+	\begin{align}
+		l_0''(s) &= \frac{d}{ds} \left( \frac{2s - 3}{2} \right) = \frac{2}{2} = 1 \\
+		l_1''(s) &= \frac{d}{ds} \left( 2 - 2s \right) = -2 \\
+		l_2''(s) &= \frac{d}{ds} \left( \frac{2s - 1}{2} \right) = \frac{2}{2} = 1
+	\end{align}
+	
+	Sustituyendo estos resultados constantes en la sumatoria de la segunda derivada:
+	\begin{equation}
+		f''(x) = \frac{1}{h^2} \left[ (1) f_0 + (-2) f_1 + (1) f_2 \right]
+	\end{equation}
+	lo cual conduce directamente a la \textit{Fórmula de la Segunda Derivada Finita}:
+	\begin{equation}
+		f''(x) = \frac{f_0 - 2f_1 + f_2}{h^2}
+		\label{eq:second_deriv_formula}
+	\end{equation}
+	
+	% ==============================================================================
+	\subsection{Formulación Newtoniana del Problema de $N$ Cuerpos en Cartesianas 3D}
+	% ==============================================================================
+	
+	Si se considera un sistema dinámico no aislado compuesto por $N$ masas puntuales designadas por los índices $i, j \in \{0, 1, \dots, N-1\}$.\footnote{Esta numeración, empezando en 0, se usa para que sea más fácil de pasar a códigcos de programación cuya indexación empiece en 0, siendo equivalente a $\{1, 2, \dots, N\}$} Donde la masa de la $i$-ésima partícula denotada por $m_i$ se asume constante en el tiempo.
+	
+	La posición de la partícula $i$ en un marco de referencia inercial tridimensional está dada por el vector de posición $\mathbf{x}_i(t) = (x_i(t), y_i(t), z_i(t))^T \in \mathbb{R}^3$. La fuerza gravitacional neta ejercida sobre el cuerpo $i$ por la superposición de atracción de todos los demás cuerpos $j \neq i$ obedece a la Ley de Gravitación Universal de Newton:
+	\begin{equation}
+		\mathbf{F}_i = -G m_i \sum_{\substack{j=0 \\ j \neq i}}^{N-1} \frac{m_j}{r_{ij}^3} \mathbf{r}_{ij}
+	\end{equation}
+	donde $G$ es la constante de gravitación universal, $\mathbf{r}_{ij} = \mathbf{x}_i - \mathbf{x}_j$ es el vector de separación relativa orientado desde el cuerpo $j$ hacia el cuerpo $i$, y la magnitud escalar euclidiana $r_{ij} = \|\mathbf{r}_{ij}\|$ está dada por:
+	\begin{equation}
+		r_{ij} = \sqrt{(x_i - x_j)^2 + (y_i - y_j)^2 + (z_i - z_j)^2}
+	\end{equation}
+	
+	Aplicando la Segunda Ley de Newton $\mathbf{F}_i = m_i \ddot{\mathbf{x}}_i$, se  divide por la masa inercial $m_i$ para obtener la ecuación vectorial del movimiento (aceleración):
+	\begin{equation}
+		\ddot{\mathbf{x}}_i = -G \sum_{\substack{j=0 \\ j \neq i}}^{N-1} \frac{m_j}{r_{ij}^3} \mathbf{r}_{ij}
+		\label{eq:n_body_vector}
+	\end{equation}
+	
+	Descomponiendo la Ec.~(\ref{eq:n_body_vector}) en sus tres componentes cartesianas absolutas para la partícula $i$:
+	\begin{align}
+		\ddot{x}_i &= -G \sum_{\substack{j=0 \\ j \neq i}}^{N-1} m_j \frac{x_i - x_j}{\left[(x_i - x_j)^2 + (y_i - y_j)^2 + (z_i - z_j)^2\right]^{3/2}} \label{eq:acc_x} \\
+		\ddot{y}_i &= -G \sum_{\substack{j=0 \\ j \neq i}}^{N-1} m_j \frac{y_i - y_j}{\left[(x_i - x_j)^2 + (y_i - y_j)^2 + (z_i - z_j)^2\right]^{3/2}} \label{eq:acc_y} \\
+		\ddot{z}_i &= -G \sum_{\substack{j=0 \\ j \neq i}}^{N-1} m_j \frac{z_i - z_j}{\left[(x_i - x_j)^2 + (y_i - y_j)^2 + (z_i - z_j)^2\right]^{3/2}} \label{eq:acc_z}
+	\end{align}
+	
+	Para propagar computacionalmente este sistema mediante integradores numéricos de primer orden, se pasa el sistema de $N$ ecuaciones diferenciales ordinarias de segundo orden a un sistema equivalente de $6N$ EDOs de primer orden. Definiendo el vector de estado global $\mathbf{Y}(t) \in \mathbb{R}^{6N}$ organizado como:
+	\begin{equation}
+		\mathbf{Y}_i(t) = \begin{pmatrix} \mathbf{x}_i(t) \\ \mathbf{v}_i(t) \end{pmatrix} = \begin{pmatrix} x_i, y_i, z_i, v_{x,i}, v_{y,i}, v_{z,i} \end{pmatrix}^T \in \mathbb{R}^6
+	\end{equation}
+	
+	El sistema dinámico autónomo de primer orden resultante es:
+	\begin{equation}
+		\frac{d\mathbf{Y}_i}{dt} = \begin{pmatrix} \frac{d\mathbf{x}_i}{dt} \\[0.5em] \frac{d\mathbf{v}_i}{dt} \end{pmatrix} = \begin{pmatrix} \mathbf{v}_i \\[0.5em] \mathbf{a}_i(\mathbf{x}_0, \mathbf{x}_1, \dots, \mathbf{x}_{N-1}) \end{pmatrix}
+		\label{eq:state_space_system}
+	\end{equation}
+	
+	\subsection{Demostración Rigurosa de las Leyes de Conservación en el Problema de $n$ Cuerpos}
+	
+	Consideremos un sistema dinámico cerrado de $n$ partículas en $\mathbb{R}^3$ con masas $m_i > 0$ y posiciones $\mathbf{q}_i(t) \in \mathbb{R}^3$ para $i \in \{1, \dots, n\}$. La evolución del sistema está gobernada por la Segunda Ley de Newton:
+	\begin{equation}
+		m_i \ddot{\mathbf{q}}_i = \mathbf{F}_i = \sum_{j \neq i} \mathbf{F}_{ij}
+		\label{eq:newton_second_law}
+	\end{equation}
+	donde $\mathbf{F}_{ij}$ es la fuerza ejercida sobre la partícula $i$ debido a la partícula $j$. Asumimos la Tercera Ley de Newton, requiriendo que la interacción sea central y paritaria:
+	\begin{equation}
+		\mathbf{F}_{ij} = f_{ij}(|\mathbf{q}_i - \mathbf{q}_j|) \frac{\mathbf{q}_i - \mathbf{q}_j}{|\mathbf{q}_i - \mathbf{q}_j|} \equiv f_{ij} \hat{\mathbf{r}}_{ij}
+		\label{eq:pairwise_central_force}
+	\end{equation}
+	con $f_{ij} = f_{ji}$, de lo cual se deduce directamente la antisimetría $\mathbf{F}_{ji} = -\mathbf{F}_{ij}$.
+	
+	% ------------------------------------------------------------------------------
+	\subsubsection{Conservación del Momento Lineal Total}
+	% ------------------------------------------------------------------------------
+	
+	El momento lineal total del sistema $\mathbf{P}(t) \in \mathbb{R}^3$ se define como:
+	\begin{equation}
+		\mathbf{P}(t) = \sum_{i=1}^n m_i \dot{\mathbf{q}}_i(t)
+	\end{equation}
+	
+	Derivando respecto al tiempo y sustituyendo las ecuaciones de movimiento \eqref{eq:newton_second_law}:
+	\begin{equation}
+		\frac{d\mathbf{P}}{dt} = \sum_{i=1}^n m_i \ddot{\mathbf{q}}_i = \sum_{i=1}^n \sum_{j \neq i} \mathbf{F}_{ij}
+	\end{equation}
+	
+	Reagrupando la doble sumatoria sobre todos los pares no ordenados $(i, j)$ con $1 \le i < j \le n$ y usando antisimetría:
+	\begin{equation}
+		\frac{d\mathbf{P}}{dt} = \sum_{1 \le i < j \le n} (\mathbf{F}_{ij} + \mathbf{F}_{ji}) = \sum_{1 \le i < j \le n} (\mathbf{F}_{ij} - \mathbf{F}_{ij}) = \mathbf{0}
+	\end{equation}
+	
+	Dado que $\frac{d\mathbf{P}}{dt} = \mathbf{0}$, el momento lineal total es una constante del movimiento:
+	\begin{equation}
+		\mathbf{P}(t) = \mathbf{P}(0) = \text{cte.}
+	\end{equation}
+	
+	% ------------------------------------------------------------------------------
+	\subsubsection{Conservación de la Energía Mecánica Total}
+	% ------------------------------------------------------------------------------
+	
+	La energía mecánica total del sistema es $E(t) = T(t) + V(t)$, donde la energía cinética $T(t)$ y la energía potencial interpartícula $V(t)$ están dadas por:
+	\begin{equation}
+		T(t) = \frac{1}{2} \sum_{i=1}^n m_i |\dot{\mathbf{q}}_i|^2 = \frac{1}{2} \sum_{i=1}^n m_i (\dot{\mathbf{q}}_i \cdot \dot{\mathbf{q}}_i)
+	\end{equation}
+	\begin{equation}
+		V(t) = \sum_{1 \le i < j \le n} V_{ij}(|\mathbf{q}_i - \mathbf{q}_j|)
+	\end{equation}
+	donde el potencial escalar $V_{ij}(r)$ satisface que $-\dot{V}_{ij}(r) = f_{ij}(r)$.
+	
+	Calculando la derivada temporal de la energía cinética $T(t)$ y usar la segunda ley de Newton:
+	\begin{equation}
+		\frac{dT}{dt} = \frac{1}{2} \sum_{i=1}^n 2 \cdot m_i (\ddot{\mathbf{q}}_i \cdot \dot{\mathbf{q}}_i) = \sum_{i=1}^n \mathbf{F}_i \cdot \dot{\mathbf{q}}_i = \sum_{i=1}^n \sum_{j \neq i} \mathbf{F}_{ij} \cdot \dot{\mathbf{q}}_i
+	\end{equation}
+	al reexpresar como suma sobre pares no ordenados $1 \le i < j \le n$ y usar antisimetría:
+	\begin{equation}
+		\frac{dT}{dt} = \sum_{1 \le i < j \le n} (\mathbf{F}_{ij} \cdot \dot{\mathbf{q}}_i + \mathbf{F}_{ji} \cdot \dot{\mathbf{q}}_j) = \sum_{1 \le i < j \le n} \mathbf{F}_{ij} \cdot (\dot{\mathbf{q}}_i - \dot{\mathbf{q}}_j)
+		\label{eq:dT_dt}
+	\end{equation}
+	
+	Por otra parte, aplicando la regla de la cadena a la derivada temporal de la energía potencial $V(t)$:
+	\begin{equation}
+		\frac{d}{dt} |\mathbf{q}_i - \mathbf{q}_j| = \frac{d}{dt} \vec{r}_{ij} = \frac{\vec{r}_{ij}}{\norm{r_{ij}}} \dot{\vec{r}}_{ij} = \hat{\mathbf{r}}_{ij} \dot{\mathbf{r}}_{ij} = \frac{\mathbf{q}_i - \mathbf{q}_j}{|\mathbf{q}_i - \mathbf{q}_j|} \cdot (\dot{\mathbf{q}}_i - \dot{\mathbf{q}}_j)
+	\end{equation}
+	
+	\begin{equation}
+		\frac{dV}{dt} = \sum_{1 \le i < j \le n} V_{ij}'(|\mathbf{q}_i - \mathbf{q}_j|) \frac{\mathbf{q}_i - \mathbf{q}_j}{|\mathbf{q}_i - \mathbf{q}_j|} \cdot (\dot{\mathbf{q}}_i - \dot{\mathbf{q}}_j)
+	\end{equation}
+	
+	Sustituyendo $-\dot{V}_{ij}'(r) = -f_{ij}(r)$ y la definición de fuerza \eqref{eq:pairwise_central_force}:
+	\begin{equation}
+		\frac{dV}{dt} = -\sum_{1 \le i < j \le n} f_{ij}(|\mathbf{q}_i - \mathbf{q}_j|) \frac{\mathbf{q}_i - \mathbf{q}_j}{|\mathbf{q}_i - \mathbf{q}_j|} \cdot (\dot{\mathbf{q}}_i - \dot{\mathbf{q}}_j) = -\sum_{1 \le i < j \le n} \mathbf{F}_{ij} \cdot (\dot{\mathbf{q}}_i - \dot{\mathbf{q}}_j)
+		\label{eq:dV_dt}
+	\end{equation}
+	
+	Sumando las ecuaciones \eqref{eq:dT_dt} y \eqref{eq:dV_dt}:
+	\begin{equation}
+		\frac{dE}{dt} = \frac{dT}{dt} + \frac{dV}{dt} = \sum_{1 \le i < j \le n} \mathbf{F}_{ij} \cdot (\dot{\mathbf{q}}_i - \dot{\mathbf{q}}_j) - \sum_{1 \le i < j \le n} \mathbf{F}_{ij} \cdot (\dot{\mathbf{q}}_i - \dot{\mathbf{q}}_j) = 0
+	\end{equation}
+	
+	Por consiguiente, la energía mecánica total se conserva: $E(t) = E(0) = \text{cte.}$
+	
+	% ------------------------------------------------------------------------------
+	\subsubsection{Conservación del Momento Angular Total}
+	% ------------------------------------------------------------------------------
+	
+	El momento angular total del sistema de $n$ partículas respecto al origen se define como:
+	\begin{equation}
+		\mathbf{J}(t) = \sum_{i=1}^n m_i (\mathbf{q}_i \times \dot{\mathbf{q}}_i)
+	\end{equation}
+	
+	Derivando con respecto al tiempo:
+	\begin{equation}
+		\frac{d\mathbf{J}}{dt} = \sum_{i=1}^n m_i \left( \dot{\mathbf{q}}_i \times \dot{\mathbf{q}}_i + \mathbf{q}_i \times \ddot{\mathbf{q}}_i \right)
+	\end{equation}
+	
+	Sabiendo que el producto vectorial de un vector consigo mismo es nulo ($\dot{\mathbf{q}}_i \times \dot{\mathbf{q}}_i = \mathbf{0}$) y aplicando $m_i \ddot{\mathbf{q}}_i = \mathbf{F}_i$:
+	\begin{equation}
+		\frac{d\mathbf{J}}{dt} = \sum_{i=1}^n \mathbf{q}_i \times \mathbf{F}_i = \sum_{i=1}^n \sum_{j \neq i} \mathbf{q}_i \times \mathbf{F}_{ij}
+	\end{equation}
+	
+	Agrupando nuevamente sobre pares de interacciones unívocas $1 \le i < j \le n$ y utilizando antisimetría ($\mathbf{F}_{ji} = -\mathbf{F}_{ij}$):
+	\begin{equation}
+		\frac{d\mathbf{J}}{dt} = \sum_{1 \le i < j \le n} \left( \mathbf{q}_i \times \mathbf{F}_{ij} + \mathbf{q}_j \times \mathbf{F}_{ji} \right) = \sum_{1 \le i < j \le n} (\mathbf{q}_i - \mathbf{q}_j) \times \mathbf{F}_{ij}
+	\end{equation}
+	
+	Sustituyendo la hipótesis de fuerza central \eqref{eq:pairwise_central_force}:
+	\begin{equation}
+		\frac{d\mathbf{J}}{dt} = \sum_{1 \le i < j \le n} \frac{f_{ij}(|\mathbf{q}_i - \mathbf{q}_j|)}{|\mathbf{q}_i - \mathbf{q}_j|} \left[ (\mathbf{q}_i - \mathbf{q}_j) \times (\mathbf{q}_i - \mathbf{q}_j) \right]
+	\end{equation}
+	
+	Dado que el producto cruz de cualquier vector por sí mismo es idénticamente nulo, $(\mathbf{q}_i - \mathbf{q}_j) \times (\mathbf{q}_i - \mathbf{q}_j) = \mathbf{0}$:
+	\begin{equation}
+		\frac{d\mathbf{J}}{dt} = \mathbf{0} \implies \mathbf{J}(t) = \mathbf{J}(0) = \text{cte.}
+	\end{equation}
+	
+	% ==============================================================================
+	\subsection{Aproximación de Masa Puntual, Dinámica de Mareas y Clasificación Cinemática}
+	% ==============================================================================
+	
+	\subsubsection{Limites de la Aproximación de Masa Puntual y Efectos de Marea}
+	La consideración de los cuerpos como masas puntuales adimensionales simplifica el modelado al recuperar órbitas keplerianas analíticas. Sin embargo, en sistemas reales, las dimensiones finitas de los cuerpos Celestes generan gradientes de potencial que desencadenan fuerzas de marea. Estas fuerzas son responsables de fenómenos clave de alta precisión observacional:
+	\begin{itemize}
+		\item \textbf{Resonancia Día-Órbita de Mercurio:} Un acoplamiento 3:2 entre el periodo de rotación sobre su propio eje y el periodo de traslación orbital.
+		\item \textbf{Sistema Tierra-Luna:} El incremento secular continuo del semieje mayor lunar ($\sim 3.8 \text{ cm/año}$) debido a la transferencia de momento angular por la fricción de marea que frena gradualmente la rotación terrestre.
+		\item \textbf{Geofísica Terrestre:} La excitación de las mareas oceánicas y continentales, y la disipación viscoelástica que contribuye a sostener la geodinamo en el núcleo externo.
+	\end{itemize}
+	
+	\subsubsection{Escala de Tiempo de Relajación y Clasificación de Sistemas}
+	La clasificación cinemática de un sistema gravitacional de $N$ cuerpos viene definida por el \textit{Tiempo de Relajación de Dos Cuerpos} ($t_{\text{relax}}$), el cual mide la escala de tiempo requerida para que los encuentros dispersivos cercanos alteren significativamente el vector de velocidad de una partícula. Siguiendo a Binney y Tremaine (2008), para un sistema caracterizado por un radio característico $R$, un número de partículas $N$ y una velocidad típica $v$, el tiempo de relajación se aproxima por:
+	\begin{equation}
+		t_{\text{relax}} \approx \frac{0.1 \, N R}{\ln(N) \, v}
+		\label{eq:t_relax}
+	\end{equation}
+	
+	En función de $t_{\text{relax}}$, los sistemas se clasifican en:
+	\begin{enumerate}
+		\item \textbf{Sistemas Colisionales ($t_{\text{relax}} < t_{\text{sim}}$):} La escala de tiempo de relajación es pequeña comparada con el tiempo total de integración del sistema. Los encuentros cercanos entre pares dominan la evolución orbital alterando severamente las trayectorias individuales. Ejemplos típicos son los cúmulos estelares globulares ($t_{\text{relax}} \approx 400 \text{ Ma}$) y los discos protoplanetarios durante la fase de fusión de embriones planetarios.
+		\item \textbf{Sistemas No Colisionales ($t_{\text{relax}} \gg t_{\text{sim}}$):} El tiempo de relajación supera en varios órdenes de magnitud la edad del universo (tiempo de Hubble). Las trayectorias están gobernadas por el campo de potencial medio suavizado del sistema global (ej. halos de Materia Oscura o galaxias).
+	\end{enumerate}
+	
+	\subsubsection{Longitud de Suavizado Gravitacional (\textit{Softening Length})}
+	En simulaciones numéricas de sistemas no colisionales, las aproximaciones cercanas entre dos partículas producen una singularidad cuando la distancia $r_{ij} \to 0$, causando divergencias aberrantes en la aceleración ($\mathbf{a} \propto 1/r^2 \to \infty$) y forzando al integrador a reducir el paso de tiempo $h$ hasta valores prohibitivos. 
+	
+	Para mitigar esta singularidad del potencial newtoniano, se introduce en el algoritmo la \textit{Longitud de Suavizado} (\textit{Softening Length}, $\epsilon$). De modo que el potencial modificado de Plummer adopta la forma:
+	\begin{equation}
+		\Phi_\epsilon(\mathbf{r}) = -\frac{G m}{\sqrt{r^2 + \epsilon^2}}
+	\end{equation}
+	
+	La fuerza por unidad de masa (aceleración) modificada que garantiza una magnitud finita conforme $r_{ij} \to 0$, de modo que se implementa computacionalmente como:
+	\begin{equation}
+		\mathbf{a}_i = -G \sum_{\substack{j=0 \\ j \neq i}}^{N-1} \frac{m_j \mathbf{r}_{ij}}{\left(r_{ij}^2 + \epsilon^2\right)^{3/2}}
+		\label{eq:softened_acc}
+	\end{equation}
+	
+	\section{Arquitectura del Motor de Simulación y Solucionadores EDO}
+	
+	En esta sección se establece el marco teórico y la arquitectura de software para el motor de simulación dinámico de $N$ cuerpos, detallando la formulación vectorial de las fuerzas gravitacionales, la implementación de integradores de Ecuaciones Diferenciales Ordinarias (EDOs) y los algoritmos para la detección continua de eventos orbitales.
+	
+	% ==============================================================================
+	\subsection{Formulación del Potencial Gravitacional y Aceleración Vectorizada 3D}
+	% ==============================================================================
+	
+	Para describir la trayectoria tridimensional de un sistema de $N$ cuerpos bajo interacción gravitacional directa, la aceleración ejercida sobre la $i$-ésima partícula por el resto de la distribución de masa se expresa según la Ley de Gravitación Universal de Newton:
+	\begin{equation}
+		\mathbf{a}_i = \ddot{\mathbf{x}}_i = -G \sum_{\substack{j=0 \\ j \neq i}}^{N-1} \frac{m_j \left(\mathbf{x}_i - \mathbf{x}_j\right)}{\left(\|\mathbf{x}_i - \mathbf{x}_j\|^2 + \epsilon^2\right)^{3/2}}
+		\label{eq:acc_vectorized_3d}
+	\end{equation}
+	donde $G$ es la constante de gravitación universal, $m_j$ es la masa del cuerpo $j$, $\mathbf{x}_i$ es la posición en el espacio tridimensional y $\epsilon$ es el parámetro de suavizado (\textit{softening}) introducido para evitar singularidades numéricas en encuentros cercanos ($\Vert{}\mathbf{x}_i - \mathbf{x}_j\Vert{} \to 0$).
+	
+	En el marco del Problema Restringido de Tres Cuerpos (CR3BP) o sistemas jerárquicos, la aceleración perturbadora $W$ sobre un cuerpo secundario $A$ respecto a la primaria central se formula separando la atracción directa y la fuerza inercial indirecta:
+	\begin{equation}
+		W = \sum_{\substack{B=1 \\ B \neq A}}^{N-1} G m_B \left( \frac{1}{r_{AB}} - \frac{1}{R_B} - \frac{\mathbf{R}_A \cdot \mathbf{R}_B}{R_B^3} \right)
+		\label{eq:perturbing_potential}
+	\end{equation}
+	donde $\mathbf{R}_A$ y $\mathbf{R}_B$ son los vectores de posición referidos al centro de masa primario y $r_{AB} = \Vert{}\mathbf{R}_A - \mathbf{R}_B\Vert{}$.
+	
+	% ==============================================================================
+	\subsection{Integradores Numéricos para EDOs: RK4 y Métodos Simplécticos}
+	% ==============================================================================
+	
+	El motor dinámico se diseña desde cero sin recurrir a bibliotecas externas de resolución de EDOs. Se implementan dos esquemas numéricos con propiedades complementarias:
+	
+	\subsubsection{Método Runge-Kutta de 4.º Orden (RK4)}
+	Proporciona alta precisión local con un error de truncamiento de orden $O(h^5)$ por paso y un error global de $O(h^4)$. Dado el vector de estado global $\mathbf{Y}(t) = \big(\mathbf{x}(t), \mathbf{v}(t)\big)^T$, la propagación sobre un intervalo $h$ se calcula mediante:
+	\begin{equation}
+		\mathbf{Y}_{n+1} = \mathbf{Y}_n + \frac{h}{6} \left(\mathbf{k}_1 + 2\mathbf{k}_2 + 2\mathbf{k}_3 + \mathbf{k}_4\right)
+	\end{equation}
+	donde las pendientes intermedias del espacio de fases corresponden a:
+	\begin{align}
+		\mathbf{k}_1 &= \mathbf{f}(t_n, \mathbf{Y}_n) \\
+		\mathbf{k}_2 &= \mathbf{f}\left(t_n + \frac{h}{2}, \mathbf{Y}_n + \frac{h}{2} \mathbf{k}_1\right) \\
+		\mathbf{k}_3 &= \mathbf{f}\left(t_n + \frac{h}{2}, \mathbf{Y}_n + \frac{h}{2} \mathbf{k}_2\right) \\
+		\mathbf{k}_4 &= \mathbf{f}(t_n + h, \mathbf{Y}_n + h \mathbf{k}_3)
+	\end{align}
+	
+	\subsubsection{Integrador Simpléctico (Verlet velocidad)}
+	Para simulación de larga duración, se emplea un esquema de segundo orden $O(h^2)$ que conserva el volumen en el espacio de fases y acota la deriva del Hamiltoniano $H = T + V$. El algoritmo distribuye las actualizaciones de posición y velocidad siguiendo los pasos:
+	
+	\begin{enumerate}
+		\item
+		\begin{equation}
+			\begin{aligned}
+				\mathbf{v}_i\left(t + \frac{h}{2}\right)
+				&= \mathbf{v}_i(t)
+				+ \frac{h}{2}\mathbf{a}_i\bigl(\mathbf{x}(t)\bigr)
+			\end{aligned}
+		\end{equation}
+		
+		\item
+		\begin{equation}
+			\begin{aligned}
+				\mathbf{x}_i(t+h)
+				&= \mathbf{x}_i(t)
+				+ h\,\mathbf{v}_i\left(t+\frac{h}{2}\right)
+			\end{aligned}
+		\end{equation}
+		
+		\item
+		\begin{equation}
+			\begin{aligned}
+				\mathbf{v}_i(t+h)
+				&= \mathbf{v}_i\left(t+\frac{h}{2}\right)
+				+ \frac{h}{2}\mathbf{a}_i\bigl(\mathbf{x}(t+h)\bigr)
+			\end{aligned}
+		\end{equation}
+		
+		
+	\end{enumerate}
+	
+	% ==============================================================================
+	\subsection{Detección de Eventos Mediante el Método de Bisección}
+	% ==============================================================================
+	
+	Para localizar fenómenos astronómicos discretos (tales como pasos por el periapsis, apoapsis o cruce de planos orbitales), se implementa una función condicional $g(t) = \mathbf{r}(t) \cdot \mathbf{v}(t)$. Cuando se detecta un cambio de signo $g(t_a) \cdot g(t_b) < 0$ dentro de un paso discreto $[t_a, t_b]$, el instante del evento $t^*$ se aísla mediante el algoritmo de Bisección:
+	
+	\begin{enumerate}
+		\item Se evalúa el punto medio del intervalo: $t_m = \frac{t_a + t_b}{2}$.
+		\item Se calcula el estado interpolado $\mathbf{Y}(t_m)$ y la función $g(t_m)$.
+		\item Se actualiza el subintervalo según la regla de signos: si $g(t_a) \cdot g(t_m) < 0$, entonces $t_b = t_m$; en caso contrario, $t_a = t_m$.
+		\item Se repite el procedimiento iterativamente hasta que $\vert{}t_b - t_a\vert{} < \text{tol}$.
+	\end{enumerate}
+	
+	Para fines de verificación del detector de eventos, el algoritmo incluye la prueba unitaria estandarizada con constante de cruce en $t = 2.667$.
+	
+	% ==============================================================================
+	\subsection{Interpolación de Datos Intermedios con Lagrange}
+	% ==============================================================================
+	
+	Cuando el tamaño de paso de integración $h$ resulta grande en comparación con la escala del evento, se evita la re-ejecución del integrador realizando una interpolación polinomial continua del vector de estado $\mathbf{Y}(t)$ para $t \in [t_n, t_{n+1}]$ utilizando la base de Lagrange sobre nodos vecinos:
+	\begin{equation}
+		\mathbf{Y}(t) = \sum_{j=0}^{n} l_j(t) \mathbf{Y}_j, \quad \text{con } l_j(t) = \prod_{\substack{k=0 \\ k \neq j}}^{n} \frac{t - t_k}{t_j - t_k}
+	\end{equation}
+	
+	% ==============================================================================
+	\subsection{Requisitos del Código: Modularidad, Vectorización y Logging Temporal}
+	% ==============================================================================
+	
+	La arquitectura del programa cumple con los siguientes principios de diseño de software científico:
+	\begin{itemize}
+		\item \textbf{Modularidad desacoplada:} La evaluación de fuerzas gravitacionales y el propagador de EDOs están independientes para permitir la sustitución dinámica del solucionador (RK4 vs. Verlet Velocidad).
+		\item \textbf{Vectorización N-dimensional:} Uso de arreglos matriciales en `NumPy` para evaluar simultáneamente las interacciones en las tres coordenadas cartesianas ($x, y, z$).
+		\item \textbf{Registro de Historial (\textit{Timestamped Logging}):} Almacenamiento metódico de los instantes de tiempo $t$, matriz de posiciones, matriz de velocidades, energía total $E(t)$ y momento angular $\mathbf{L}(t)$ en cada paso.
+	\end{itemize}
+	
+	% ---------------------------------------------------------
+	% FASE II
+	% ---------------------------------------------------------
+	\section{Fase II: Problema de 2 y 3 Cuerpos}
+	
+	\subsection{Tarea 1: Benchmark Analítico (Tierra e ISS)}
+	
+	Para validar la correcta implementación del modelo gravitacional, se simuló el sistema de dos cuerpos compuesto por la Tierra y la Estación Espacial Internacional (ISS) en Órbita Terrestre Baja (LEO). La propagación numérica se realizó utilizando el método de Runge-Kutta de 4to orden (RK4). 
+	
+	Las coordenadas iniciales cartesianas se obtuvieron a partir de los elementos orbitales keplerianos extraídos de los TLE (Two-Line Elements), destacando una inclinación de $51.6^\circ$. La simulación abarcó un periodo de 100 órbitas con un tamaño de paso $h = 10$ s.
+	
+	Se evaluó la precisión del integrador calculando la deriva (drift) frente a la solución analítica exacta (ecuaciones de Kepler). Los resultados demuestran que, si bien RK4 es altamente preciso a corto plazo, el error de truncamiento se acumula linealmente con el tiempo, lo cual es característico de los integradores no simplécticos.
+	
+	%\begin{figure}[H]
+	%	\centering
+		% \includegraphics[width=0.7\textwidth]{ruta/a/tu/grafica_deriva_tarea1.png}
+	%	\caption{Evolución de la deriva espacial entre la propagación numérica RK4 y la solución analítica tras 100 órbitas.}
+	%	\label{fig:drift_iss}
+	%\end{figure}
+	
+	\subsection{Tarea 2: Problema Restringido y Puntos de Lagrange (ISS y JWST en $L_2$)}
+	
+	Para evaluar las regiones de estabilidad dentro del pozo gravitacional del sistema Tierra-Luna, se modeló un sistema de 4 cuerpos incorporando la Estación Espacial Internacional (ISS) en la Órbita Terrestre Baja (LEO) y un satélite análogo al Telescopio Espacial James Webb (JWST) posicionado en el Punto de Lagrange $L_2$. 
+	
+	\textit{Nota: El JWST original opera en el punto $L_2$ del sistema Sol-Tierra. Para este modelo restringido, se adaptó al punto $L_2$ del sistema Tierra-Luna, situado a unos $61,500$ km más allá de la cara oculta de la Luna, permitiendo mantener la resolución temporal del integrador necesaria para la ISS ($h = 30$ s).}
+	
+	La posición del punto $L_2$ se determinó aproximando el radio de la Esfera de Hill lunar:
+	\begin{equation}
+		r_h \approx D_{TL} \left( \frac{M_L}{3 M_T} \right)^{1/3}
+	\end{equation}
+	El vector de estado de JWST se inicializó con la posición $\mathbf{r}_{L2} = \mathbf{r}_L + r_h \hat{u}$ y una velocidad de co-rotación dictada por $\mathbf{v}_{L2} = \boldsymbol{\omega} \times \mathbf{r}_{L2}$.
+	
+	\subsubsection{Análisis Visual de Trayectorias Relativas}
+	Dado el gran contraste de escalas espaciales ($\sim 6,700$ km para la ISS frente a $\sim 384,400$ km para la Luna), la visualización se dividió en transformaciones de coordenadas relativas.
+	
+	%\begin{figure}[H]
+	%	\centering
+		% \includegraphics[width=1.0\textwidth]{ruta/a/tu/grafica_multipanel_3d.png}
+	%	\caption{Izquierda: Órbita relativa de la ISS respecto a la Tierra. Centro: Trayectoria relativa de JWST respecto a la Luna. Derecha: Visualización global en el marco inercial del baricentro.}
+	%	\label{fig:relativas_t2}
+	%\end{figure}
+	
+	\subsubsection{Validación Numérica: Estabilidad vs. Inestabilidad ($L_2$)}
+	El análisis de las métricas de distancia inter-cuerpos revela dos comportamientos dinámicos radicalmente opuestos predichos por la teoría del potencial efectivo co-rotante:
+	
+	\begin{enumerate}
+		\item \textbf{Estabilidad LEO (ISS):} La distancia Tierra-ISS se mantiene en oscilaciones perigeo-apogeo inalteradas a lo largo de los 28 días. El gradiente gravitacional de la Tierra domina abrumadoramente, demostrando que LEO es un pozo de potencial estable (impermeable a las perturbaciones lunares de corto plazo).
+		\item \textbf{Inestabilidad de Punto de Silla ($L_2$):} A diferencia de los puntos $L_4/L_5$, los puntos colineales ( $L_1, L_2, L_3$ ) son topológicamente \textit{puntos de silla} en el espacio de fase hamiltoniano. Como se observa en la gráfica de validación, la posición de JWST no oscila alrededor de la distancia ideal de $L_2$, sino que \textbf{diverge exponencialmente} tras unos pocos días. 
+	\end{enumerate}
+	
+	%\begin{figure}[H]
+	%	\centering
+		% \includegraphics[width=0.9\textwidth]{ruta/a/tu/grafica_validacion_inestabilidad.png}
+		%\caption{Contrastes de estabilidad. Izquierda: La órbita de la ISS conserva su integridad estructural. Derecha: El satélite JWST sufre una divergencia inevitable de la posición teórica $L_2$, demostrando numéricamente por qué estas misiones requieren propulsión activa (station-keeping) para no escapar al espacio profundo.}
+	%	\label{fig:distancias_t2}
+	%\end{figure}
+	
+	Esta divergencia orbital valida la precisión cualitativa del simulador: el error de truncamiento del método Runge-Kutta actúa como una perturbación infinitésima que "empuja" al objeto fuera del equilibrio inestable de $L_2$, recreando el comportamiento del mundo real donde la presión de radiación solar y pequeñas fuerzas perturbadoras exigen maniobras de corrección constantes.
+	
+	% ---------------------------------------------------------
+	% FASE III
+	% ---------------------------------------------------------
+	\section{Fase III: Expansión a $N$-Cuerpos (Sistema Solar Interior)}
+	
+	La arquitectura del simulador se generalizó para propagar la dinámica de un sistema de $N$ cuerpos, aplicándose al Sistema Solar Interior (Sol, Mercurio, Venus, Tierra, Luna, Marte y sus lunas marcianas). Las condiciones iniciales (vectores de estado) se obtuvieron del sistema JPL HORIZONS para la época J2000.
+	
+	La visualización tridimensional del sistema exigió un tratamiento especial en las escalas espaciales. Dada la vastedad del espacio, se implementó un factor de magnificación (ej. $500\times$) para los radios físicos de los cuerpos sobre una cuadrícula con relación de aspecto estrictamente cúbica ($1:1:1$). Esto fue fundamental para representar correctamente las simetrías físicas del sistema, demostrando visualmente la inclinación orbital de $\approx 7^\circ$ de Mercurio respecto a la eclíptica sin distorsiones ópticas generadas por el autoescalado de los ejes.
+	
+	%\begin{figure}[H]
+	%	\centering
+		% \includegraphics[width=0.7\textwidth]{ruta/a/tu/grafica_3d_sistema_solar.png}
+	%	\caption{Simulación tridimensional del Sistema Solar Interior con aspecto $1:1:1$, mostrando la inclinación de la órbita de Mercurio.}
+	%	\label{fig:ss_interior}
+	%\end{figure}
+	
+	% ---------------------------------------------------------
+	% FASE IV
+	% ---------------------------------------------------------
+	\section{Fase IV: Validación Física y Análisis de Estabilidad}
+	
+	\subsection{Leyes de Conservación}
+	La viabilidad física de la simulación depende del respeto estricto a las simetrías fundamentales, expresadas a través de la conservación de la Energía Total ($E$) y el Momento Angular Total ($\mathbf{L}$).
+	$$ E = \sum_{i=1}^{N} \frac{1}{2} m_i v_i^2 - \sum_{i=1}^{N} \sum_{j > i}^{N} \frac{G m_i m_j}{|\mathbf{r}_i - \mathbf{r}_j|} $$
+	$$ \mathbf{L} = \sum_{i=1}^{N} m_i (\mathbf{r}_i \times \mathbf{v}_i) $$
+	
+	Los gráficos de validación multipanel demuestran que el integrador simpléctico conserva $\mathbf{L}$ a un nivel de precisión de máquina, mientras que $E$ presenta oscilaciones acotadas, impidiendo desviaciones seculares catastróficas.
+	
+	%\begin{figure}[H]
+	%	\centering
+		% \includegraphics[width=0.8\textwidth]{ruta/a/tu/grafica_validacion_multipanel.png}
+	%	\caption{Evolución de la Energía Total y Momento Angular del sistema.}
+	%	\label{fig:conservacion}
+	%\end{figure}
+	
+	\section{Análisis Formal de la Influencia del Tamaño de Paso ($h$) en el Error Global}
+	
+	Para garantizar la estabilidad y precisión de las simulaciones numéricas orbitales, es fundamental realizar un análisis riguroso del tamaño de paso $h$ y su impacto en el error de truncamiento local y la deriva global acumulada (drift). A continuación, se comparará la deriva real observada con el error teórico de truncamiento fundamentado en las expresiones generales y específicas.
+	
+	\subsection{Definición del Error Teórico de Truncamiento}
+	
+	El error general de la primera derivada $E'_n$ para un método de integración polinomial está dado por:
+	
+	$$ E'_n = \frac{h^n f^{(n+1)}(\xi)}{(n+1)! a_{0n}} \sum_{k=0}^n (k+1)a_{0k}s^k \quad \text{(0.6)} $$
+	
+	Para el caso específico de un esquema de orden $n=3$, la expresión del error de truncamiento $E'_3$ se simplifica a la siguiente forma, donde $f^{(iv)}(\xi)$ representa la cuarta derivada temporal de la posición:
+	
+	$$ E'_3 = -\frac{h^3}{12} (3 - 11s + 9s^2 - 2s^3) f^{(iv)}(\xi) \quad \text{(0.7)} $$
+	
+	\subsection{Derivación de la Cuarta Derivada a partir de las Leyes de Newton}
+	
+	Estimando la magnitud de $f^{(iv)}(\xi)$ partiendo exclusivamente de la ley de gravitación universal de Newton. La aceleración $a$ (segunda derivada de la posición) para un cuerpo en órbita circular aproximada es:
+	
+	$$ a = \ddot{r} = -\frac{GM}{r^2} $$
+	
+	La cuarta derivada de la posición corresponde a la segunda derivada de la aceleración con respecto al tiempo. Derivando $a$ por primera vez usando la regla de la cadena:
+	
+	$$ \frac{da}{dt} = \frac{2GM}{r^3}\dot{r} = \frac{2GM}{r^3}v $$
+	
+	Derivando por segunda vez para obtener la cuarta derivada de la posición $f^{(iv)}$:
+	
+	$$ f^{(iv)} = \frac{d^2a}{dt^2} = \frac{2GM}{r^3}\ddot{r} - \frac{6GM}{r^4}\dot{r}^2 = \frac{2GM}{r^3}a - \frac{6GM}{r^4}v^2 $$
+	
+	Sustituyendo la gravedad de Newton $a = -\frac{GM}{r^2}$ y la velocidad orbital de Newton $v^2 \approx \frac{GM}{r}$:
+	
+	$$ f^{(iv)} \approx \frac{2GM}{r^3}\left(-\frac{GM}{r^2}\right) - \frac{6GM}{r^4}\left(\frac{GM}{r}\right) $$
+	$$ f^{(iv)} \approx -\frac{2(GM)^2}{r^5} - \frac{6(GM)^2}{r^5} = -\frac{8(GM)^2}{r^5} $$
+	
+	Por lo tanto, la magnitud de la cuarta derivada decae drásticamente con el radio orbital elevado a la quinta potencia: $|f^{(iv)}| \propto \frac{1}{r^5}$. Simplificando la Ecuación 0.7 al agrupar el polinomio en una constante geométrica acotada de orden $S \sim 1$, el error de truncamiento local es proporcional a:
+	
+	$$ |E'_3| \approx \frac{h^3}{12} \frac{8(GM)^2}{r^5} $$
+	
+	\subsection{Justificación Matemática de $h$ por Tareas}
+	
+	\subsubsection{Tarea 1: Sistema ISS - Tierra ($h = 15$ s)}
+	
+	La ISS posee el radio orbital más pequeño de nuestras simulaciones ($r \approx 6.77 \times 10^6$ m) orbitando la Tierra ($GM_T \approx 3.986 \times 10^{14} \text{ m}^3/\text{s}^2$).  Sustituyendo en la cuarta derivada:
+	
+	$$ |f^{(iv)}_{\text{ISS}}| \approx \frac{8(3.986 \times 10^{14})^2}{(6.77 \times 10^6)^5} \approx \frac{1.27 \times 10^{30}}{1.43 \times 10^{34}} \approx 8.8 \times 10^{-5} \text{ m/s}^4 $$
+	
+	2. \textbf{Error Local y Deriva Global (Drift)}:
+	Usando $h = 15$ s:
+	$$ |E'_3| \approx \frac{15^3}{12} (8.8 \times 10^{-5}) = 281.25 \times 8.8 \times 10^{-5} \approx 0.024 \text{ m/paso} $$
+	Para una simulación de 28 días ($N = 161,280$ pasos), la deriva global teórica acumulada es:
+	$$ \text{Drift} \approx N \times |E'_3| \approx 161,280 \times 0.024 \approx 3,870 \text{ m} $$
+	Por lo que esta elección de $h$,llevando a una deriva menor a 4 km en un mes justifica que un $h=15$ s es aceptable.
+	
+	\subsubsection{Tarea 2: Sistema Tierra - Luna - ISS - JWST - Sat L4 ($h = 15$ s)}
+	
+	En esta tarea conviven cuerpos en regímenes gravitacionales muy distintos. Mientras el JWST o la Luna están a grandes distancias ($r \sim 10^8 - 10^9$ m) y permitirían un tamaño de paso sustancialmente mayor porque su término $1/r^5$ es minúsculo, \textbf{la presencia de la ISS obliga a mantener $h = 15$ s}. En una integración numérica de múltiples cuerpos acoplados, el cuerpo sujeto a la mayor $|f^{(iv)}|$ (el de menor radio) define el $h$ máximo permisible para todo el sistema. Si se usara un $h$ mayor adaptado a la Luna, la órbita de la ISS colapsaría numéricamente debido al crecimiento cúbico de $h^3$ en el error local (Eq 0.7).
+	
+	\subsubsection{Tarea 3: Sistema Solar Interior ($h = 3600$ s)}
+	
+	Al expandir al Sistema Solar Interior, la ISS ya no está presente. El cuerpo más interno (y por ende con el mayor $|f^{(iv)}|$) es Mercurio, orbitando el Sol ($GM_{Sol} \approx 1.327 \times 10^{20} \text{ m}^3/\text{s}^2$) con un radio $r \approx 5.79 \times 10^{10}$ m.
+	
+	1. \textbf{Cuarta derivada de Mercurio}:
+	$$ |f^{(iv)}_{\text{Merc}}| \approx \frac{8(1.327 \times 10^{20})^2}{(5.79 \times 10^{10})^5} \approx \frac{1.4 \times 10^{41}}{6.4 \times 10^{53}} \approx 2.1 \times 10^{-13} \text{ m/s}^4 $$
+	
+	2. \textbf{Error Local y Justificación del Paso}:
+	Con un paso $h = 3600$ s (1 hora):
+	$$ |E'_3| \approx \frac{3600^3}{12} (2.1 \times 10^{-13}) = \left(\frac{4.66 \times 10^{10}}{12}\right) \times 2.1 \times 10^{-13} \approx 8.1 \times 10^{-4} \text{ m/paso} $$
+	
+	A pesar de que el término $h^3$ es inmensamente mayor en la Tarea 3, el factor $1/r^5$ derivado de la gravedad de Newton suprime el error en tal medida que el error por paso ($0.00081$ m/paso) es de hecho mucho menor que el de la Tarea 1.
+	
+\end{document}
