@@ -1,0 +1,1 @@
+Se creó una versión inicial que no cumplía con varios parámetros del proyecto y dejaba muchos huecos, a pesar de aparentar de tratarse de un proyecto en las etapas finales, se mantienen los archivos para contrastar los avances realizados al proyecto.
