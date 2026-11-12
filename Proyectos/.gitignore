@@ -1,0 +1,50 @@
+# ============================================================
+# Proyecto 2 — Astrofísica Computacional 2026-II
+# Todo lo ignorado aquí es REGENERABLE (ver README.md)
+# ============================================================
+
+# --- LaTeX (auxiliares de compilación) ---
+*.aux
+*.log
+*.lof
+*.lot
+*.toc
+*.out
+*.synctex.gz
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+
+# excepciones: los archivos pequeños que documentan la corrida real sí van al repo
+!SNR_3D/pluto_run/corrida.log
+!SNR_3D/pluto_run/dbl.out
+!SNR_3D/pluto_run/grid.out
+
+# --- Python ---
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# --- PLUTO: binarios y objetos (make && ./pluto los regenera) ---
+SNR_3D/pluto_run/*.o
+SNR_3D/pluto_run/pluto
+# el makefile se genera con setup.py y lleva rutas absolutas de mi máquina:
+# printf 'ARCH = Linux.gcc.defs\n' > makefile
+# python3 "$PLUTO_DIR/setup.py" --auto-update
+# echo 'CFLAGS += -D_DEFAULT_SOURCE' >> makefile
+SNR_3D/pluto_run/makefile
+SNR_3D/pluto_run/sysconf.out
+SNR_3D/pluto_run/restart.out
+
+# --- PLUTO: salidas de la simulación (245 MB; ./pluto los regenera en ~22 min) ---
+SNR_3D/pluto_run/data.*.dbl*
+SNR_3D/pluto_run/data.*.flt*
+SNR_3D/pluto_run/data.*.vtk*
+
+# --- datos derivados del script de teoría (python3 teoria_snr.py los regenera) ---
+SNR_3D/analisis/*.csv
+
+# --- sistema ---
+.DS_Store
+Thumbs.db
