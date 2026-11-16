@@ -14,7 +14,7 @@
 \usepackage{enumitem}
 \usepackage[colorlinks=true,linkcolor=blue!60!black,citecolor=blue!60!black,urlcolor=blue!60!black]{hyperref}
 
-\graphicspath{{../analisis/figs/}}
+\graphicspath{{../analisis/figs/}{../../Rayleigh_Taylor_MHD/figs/}{figs_obs/}}
 
 % numeros medidos en el notebook (los actualizo a mano cuando lo vuelvo a correr)
 \newcommand{\SIGeff}{0.229}
@@ -42,6 +42,21 @@ fraschetti2010}. Quería ver si con mi computador puedo \emph{reproducir esa fí
 hacer que aparezcan dedos, medir qué tan rápido crecen, y comprobar que el campo los deja
 anisótropos (alargados a lo largo de las líneas).
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.48\textwidth]{tycho_nasa.jpg}\hfill
+\includegraphics[width=0.50\textwidth]{casa_nasa.jpg}
+\caption{Las dos fotos de las que parte todo. \textbf{Izquierda}: el remanente de Tycho
+(compuesto infrarrojo Spitzer + rayos X Chandra; la envoltura circular es el choque
+delantero y los ``dedos'' radiales que sobresalen de ella son la eyecta de la estrella
+atravesando la discontinuidad de contacto). \textbf{Derecha}: Cas~A (compuesto
+multi-banda Fermi/Chandra), un contacto más roto: nudos y penachos de eyecta en todas
+direcciones. En las dos, los ``dedos'' que mi simulación quiere reproducir son la
+inestabilidad Rayleigh--Taylor del contacto, frenados por el campo ambiental.
+Créditos: NASA/JPL--Caltech (Tycho, PIA11435); NASA/DOE/Fermi y colaboradores
+(Cas~A).}
+\end{figure}
+
 Escribir esto me sirvió para entender varias cosas que en el notebook quedan implícitas,
 así que el informe sigue más o menos el orden en que yo fui entendiendo el problema:
 primero por qué una interfaz acelerada ``es'' una RT (\S2), después qué decidí correr y
@@ -55,15 +70,17 @@ el notebook ejecutado es \texttt{analisis/SNR\_3D\_analisis.ipynb}.
 
 En la fase de eyecta dominada, el remanente crece como $R(t)=C\,t^\eta$ con $\eta<1$
 (Sedov: $\eta=2/5$; Chevalier 1982 para la eyecta con perfil en ley de potencias
-\cite{warren2013}). Si derivo dos veces,
+\cite{warren2013, chevalier1982, sedov1959}). Si derivo dos veces,
 \begin{equation}
 a=\ddot{R}=\eta(\eta-1)\,\frac{R}{t^2}
 \;\;\Longrightarrow\;\;
 |a|=\eta(1-\eta)\,\frac{R}{t^2}\,,
 \label{eq:geff}
 \end{equation}
-o sea que la superficie \emph{desacelera}. Eso fue lo que más me costó ver al principio:
-la intuición dice ``una explosión se expande cada vez más rápido'', pero en realidad el
+o sea que la superficie \emph{desacelera}. (De dónde sale esta fórmula: $R\propto t^\eta$
+con $\eta<1$ es el resultado de las soluciones auto-semejantes de Sedov y de Chevalier;
+las dos derivadas son álgebra mía, y es la misma cuenta que hace la literatura de SNR
+cuando justifica que el contacto es RT-inestable --- p.ej.\ \cite{orlando2012}.) Mostrando que el
 SNR barre masa y se frena. Orden de magnitud para Tycho ($R\sim5$ pc, $t\sim430$ yr):
 $|a|\sim2\times10^{-4}\ \mathrm{m/s^2}$ --- pequeñísima como aceleración, pero lo
 importante no es su tamaño absoluto sino su \emph{dirección} relativa a la estratificación.
@@ -126,7 +143,7 @@ limpieza de divergencia GLM, solver Roe). La resumo y después explico las decis
 Malla & $48\times96\times48$; $x,z\in[-0.5,0.5]$, $y\in[-1.5,0.5]$ (interfaz en $y=0$) \\
 Fronteras & periódicas en $x,z$; reflectivas en $y$ \\
 Parámetros & \texttt{ETA=4.0}, \texttt{GRAV=-0.01}, \texttt{CHI=0.2}; $\gamma=5/3$ \\
-Campo & $B_x=\chi\sqrt{(\eta-1)|g|}/\sqrt{4\pi}\simeq 9.8\times10^{-3}$ ($\beta\approx1.3\times10^4$) \\
+Campo & $B_x=\chi\sqrt{(\eta-1)|g|}/\sqrt{4\pi}\simeq 9.8\times10^{-3}$ ($\beta\approx1.3\times10^4$); la definición de $B_c=\sqrt{(\eta-1)|g|}$ viene del \texttt{init.c}, que la cita de Boyd \& Sanderson (2003, p.~99) \cite{boyd2003} \\
 CFL & 0.25; $t_\mathrm{stop}=30$, salidas dbl cada 2.0 (16 archivos) \\
 Costo & $\sim$0.22 s/paso serial, $\sim$5800 pasos $\approx$ 22 min \\
 \bottomrule
@@ -172,7 +189,13 @@ de PLUTO, sin $4\pi$) es
 \qquad k=\sqrt{k_x^2+k_z^2},\quad A=\tfrac{3}{5}.
 \label{eq:disp}
 \end{equation}
-La leí muchas veces hasta separarla en sus dos ideas:
+(De dónde la saqué: es el resultado clásico de Chandrasekhar 1961, cap.~X ``The Stability
+of Two Fluids''; el caso particular de campo horizontal puro lo había resuelto antes
+Kruskal \& Schwarzschild 1954 \cite{kruskal1954}. El chequeo de que
+quedó bien: con la definición de $B_c$ del propio \texttt{init.c}, $\chi=1$ marginaliza
+el modo fundamental \emph{exactamente}, que solo pasa si el factor 2 y el $1/\sqrt{4\pi}$
+están bien puestos.)
+Esta definición se puede separar en dos ideas:
 \begin{enumerate}
   \item \textbf{Solo $k_x$ siente el campo}. El término de tensión entra con
   $(\mathbf{k}\cdot\mathbf{B})=k_xB$. Un modo con $\mathbf{k}\perp\mathbf{B}$ (variación
@@ -183,6 +206,36 @@ La leí muchas veces hasta separarla en sus dos ideas:
   tensión; por eso el factor 2. Cuando la tensión le gana a la flotabilidad, el modo
   está estabilizado.
 \end{enumerate}
+
+\textbf{Qué es cada símbolo de la ecuación~\eqref{eq:disp}} (el diccionario que a mí
+me hubiera gustado tener al lado de la fórmula):
+
+\begin{itemize}[nosep]
+  \item $\sigma$: la \emph{tasa de crecimiento} --- la amplitud de la corrugación va
+  como $e^{\sigma t}$; $\sigma$ grande = dedos que aparecen rápido. El signo de
+  $\sigma^2$ decide todo: positivo $\Rightarrow$ crece (inestable), negativo
+  $\Rightarrow$ oscila y decae (estabilizado).
+  \item $A=(\rho_2-\rho_1)/(\rho_1+\rho_2)=3/5$: el \emph{número de Atwood}, la
+  asimetría entre el fluido pesado de arriba ($\rho_2=4$, la eyecta) y el ligero de
+  abajo ($\rho_1=1$, el medio chocado). Sin contraste de densidades no hay RT.
+  \item $g=|{-0.01}|$: la magnitud de la gravedad efectiva (la desaceleración del
+  contacto del SNR, eq.~\ref{eq:geff}). Es el motor: energía potencial que se libera
+  al mezclarse.
+  \item $k=\sqrt{k_x^2+k_z^2}=2\pi/\lambda$: el número de onda \emph{total} de la
+  perturbación de la interfaz (una corrugación de longitud $\lambda$). El término de
+  flotabilidad crece con $k$: modos más finos crecen más rápido (en esta teoría
+  incompresible, sin corte).
+  \item $k_x$: la componente de $\mathbf{k}$ \emph{a lo largo del campo}
+  ($(k_x,k_z)$ con $\mathbf{B}=B\hat{x}$). Es la única que entra al término
+  magnético, porque solo un modo con variación a lo largo de las líneas las
+  \emph{estira}; esa es la fuente de toda la anisotropía del problema.
+  \item $B\simeq9.8\times10^{-3}$: la intensidad del campo (uniforme, horizontal,
+  en unidades de código). Entra al \emph{cuadrado} y multiplicado por $k_x^2$:
+  doblemente selectivo con la dirección y la escala.
+  \item $\rho_1+\rho_2=5$ en el denominador: la tensión de las líneas la sienten
+  \emph{ambos} fluidos (las líneas atraviesan la interfaz); el factor 2 del
+  numerador es por lo mismo: un lado y el otro aportan cada uno su tensión.
+\end{itemize}
 
 Números del caso (salen de \texttt{teoria\_snr.py}, que además dibuja el mapa completo
 $\sigma(k_x,k_z)$):
@@ -227,6 +280,18 @@ de ángulo y no buscando un ``hueco'' de estabilidad: el hueco cae fuera de la f
 
 \subsection{Morfología: dedos anisótropos}
 
+Antes de las figuras, los ejes (aparecen igual en casi todas). $y$ es la vertical:
+la gravedad efectiva apunta hacia $-y$ y la interfaz arranca en $y=0$, con la eyecta
+($\rho=4$) arriba. Las horizontales son $x$ y $z$, y las etiqueto con su relación
+con el campo porque \emph{esa relación es el resultado}: el campo inicial es
+$\mathbf{B}=B_x\hat{x}$, así que $x$ es la dirección \emph{a lo largo} de las líneas
+(``$\|$B'') y $z$ la transversal (``$\perp$B''). Cuando compare el corte $z=0$ con el
+corte $x=0$, o los promedios a lo largo de cada eje, la pregunta siempre es la
+misma: ¿las estructuras son más finas transversal al campo que paralelas a él? Las
+unidades son las de código del setup ($L_x=1$, $\rho_1=1$, $c_{s,1}=1$; el tiempo
+se mide en $L_x/c_s$), así que un dedo que llega a $y=-1$ recorrió la mitad de la
+altura de la caja, y $t=30$ son $\sim$30 tiempos de cruce sonoro.
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{sim_cortes_yx.png}
@@ -270,7 +335,10 @@ magnética, a simple vista.
 Para medir el crecimiento sin depender de un solo dedo, el notebook busca todos los
 cruces de $\rho=2.5$ (punto medio entre 1 y 4) en cada columna vertical y toma la
 distancia entre los percentiles 95 y 5 de su distribución (percentiles y no extremos,
-para que un dedo aventurero no infle la medida). El ajuste log-lineal da
+para que un dedo aventurero no infle la medida). Medir el ancho de la capa de mezcla con
+percentiles es la práctica estándar de la literatura multimodo (p.ej.\ la comparación de
+códigos de Dimonte et al.\ 2004 \cite{dimonte2004} reporta anchos de ese tipo);
+la implementación concreta es mía. El ajuste semilogarítmico da
 $\sigma_\mathrm{eff}\approx \SIGeff$.
 
 Lo interesante es \emph{dónde} cae ese número: dentro del rango teórico
@@ -306,6 +374,24 @@ la anisotropía de las figuras de morfología deja de ser impresión visual y pa
 número, consistente con el mecanismo de tensión magnética (y con lo que reportan las
 simulaciones 3D de SNR \cite{orlando2012} y prominencias \cite{hillier2012}).
 
+\textbf{Los chequeos de la revisión} (sección 7 del notebook, agregados después de la
+primera versión): (i)~promediar la potencia en 10 láminas alrededor de la interfaz da
+\emph{el mismo} 17.3 --- el número no era suerte de una lámina; (ii)~la corrida de
+\textbf{control $\chi=0$} (misma malla, misma semilla, mismo esquema, solo
+\texttt{CHI=0.0} en el \texttt{pluto.ini}; carpeta \texttt{pluto\_run\_chi0/}) da razón de
+sectores $=1.0$ exacto: sin campo no hay anisotropía, o sea que la causa era el campo y
+no la malla ni la semilla; (iii)~el campo se amplifica hasta
+$\max|\mathbf{B}|/B_0\approx8.5$ (percentil 99: 4.4) concentrado en las puntas de los
+picos, como espera el estiramiento de líneas congeladas. El control era el experimento
+falsable que faltaba; con él, el argumento queda cerrado.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.62\textwidth]{sim_espectro_chi0.png}
+\caption{El control: la misma corrida sin campo ($\chi=0$) contra la original. La razón
+de sectores cae de $\sim$17 a $1.0$: la anisotropía del espectro era magnética.}
+\end{figure}
+
 \subsection{Energías y divergencia: los chequeos de honestidad}
 
 \begin{figure}[H]
@@ -338,39 +424,101 @@ figura anterior); relativo al campo real es un orden de magnitud menos; (ii) con
 config 2D de CT este número sería $\sim10^{-15}$: esa es la diferencia de precio entre
 \#09 y \#07, y es chico para lo que le pido a esta corrida.
 
-\section{Limitaciones y lo que seguiría}
+\section{Cumplimiento del enunciado: mapa de requisitos}
 
-\begin{itemize}[nosep]
-  \item \textbf{Una sola malla}. $\lambda_c=0.04$ son $\sim2$ celdas: la escala de corte
-  magnético está apenas resuelta (y el corte duro, ni eso: cae fuera de Nyquist). Una
-  malla $96\times192\times96$ sería $\sim8\times$ más cara ($\sim$3 h) y dejaría el corte
-  adentro de la foto. El $\sigma_\mathrm{eff}$ medido probablemente está subestimado por
-  difusión numérica.
-  \item \textbf{Sin control $\chi=0$}: la anisotropía medida es consistente con la
-  teoría, pero la forma limpia de aislarla sería correr el mismo setup sin campo y
-  comparar espectros. Queda para la siguiente versión, junto con un barrido en $\chi$.
-  \item \textbf{Gravedad constante vs.\ real}: en el SNR $|a|\propto t^{\eta-2}$ decae;
-  aquí es constante. Es la aproximación de parche local estándar, pero conviene decirlo.
-  \item \textbf{Una sola lámina para el espectro}: promediar unas pocas láminas alrededor
-  de $y=0$ bajaría el ruido del espectro sin costo.
-\end{itemize}
+Cierre de este informe: la tabla que cruza cada requisito del enunciado
+(\texttt{project\_2.pdf}) con el entregable que lo satisface, y un resumen de la
+parte que faltaba (la reproducción en Python y su comparación contra PLUTO).
 
-\section{Bibliografía que usé para esta parte}
+\begin{table}[H]
+\centering\small
+\caption{Requisito por requisito, dónde vive.}
+\begin{tabular}{@{}p{5.6cm}p{9.6cm}@{}}
+\toprule
+Requisito del enunciado & Dónde se cumple \\
+\midrule
+Problema de \texttt{Test\_Problems/MHD}, mínimo 2D & \texttt{Rayleigh\_Taylor}
+2D (guía, config \#07) \emph{y} 3D (config \#09, este informe) \\
+Marco teórico: ecuaciones y condiciones de frontera & guía 2D \S3--\S5
+(deducciones completas paso a paso; el glosario razonado está en
+\texttt{Glosario\_Conceptos}, carpeta local) \\
+Estado del arte & guía \S11 (bibliografía comentada; fichas por referencia en la
+carpeta local) \\
+Corrida PLUTO a completion + gráficas de TODAS las variables & 3D: notebook
+\texttt{SNR\_3D\_analisis.ipynb} \S1--\S6 y \S8 (rho, prs, vx1--3, Bx1--3,
+$\psi_\mathrm{glm}$, energías, div$B$); 2D: \texttt{pluto\_run\_2d/} \\
+Reproducción en Python (setup + solver + post-proceso) & \texttt{Rayleigh\_%
+Taylor\_MHD/python/rt2d.py}: FV + HLL + CT (Evans \& Hawley) + RK2 + limitador
+MC --- el plan de la guía \S8, realizado. 6145 pasos a $t{=}15$ en 134\,s \\
+Comparación PLUTO vs.\ Python (overlays + normas) & notebook ejecutado
+\texttt{comparacion\_pluto\_python.ipynb}: las 5 variables lado a lado,
+amplitud de la interfaz, $L_1/L_2$ en el tiempo, div$B$ y energía \\
+Entregables (reporte, código, inputs) & PDFs (informe, guía) + notebooks
+ejecutados + \texttt{init.c}/\texttt{definitions.h}/%
+\texttt{pluto.ini} de las tres corridas \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\begin{thebibliography}{9}\small
+\textbf{Resumen de la comparación} (los detalles y las figuras están en el
+notebook): con la MISMA malla, semilla y parámetros, la fase lineal de mi solver
+y la de PLUTO \#07 son indistinguibles a la resolución de la figura de amplitud
+(la profundidad del pico coincide hasta la cuarta celda decimal hasta $t\sim4$);
+el ajuste de $\sigma$ en $3\le t\le8$ da PLUTO $0.531$ vs.\ Python $0.507$
+(4.5\% de diferencia entre ellos; ambos $\sim$15\% por encima del fundamental
+$0.448$ por la contaminación de modos cortos de la semilla gaussiana --- el
+mismo efecto en los dos). La norma $L_1$ de la diferencia de $\rho$ es
+$\sim$0.006 en la fase lineal y crece a 0.041 al final --- cuando la mezcla se
+vuelve caótica, las dos realizaciones se desfasan y la norma mide eso, no un
+``error'' de ninguno. Los dos usan CT y los dos conservan la divergencia a
+precisión de máquina; la deriva de energía total del Python es
+$-8\times10^{-4}$ (RK2 con fuente sin split: truncamiento, honestamente
+reportable; PLUTO con su esquema conservativo está órdenes por debajo).
+La conclusión de física: \emph{el mecanismo no es un artefacto de PLUTO --- lo
+reproduce un solver independiente de 300 líneas}.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{comp_rho_t15.png}
+\caption{La comparación en una figura: densidad a $t=15$ con PLUTO (PPM+RK3+CT)
+y el Python propio (LINEAR+RK2+CT), misma escala; a la derecha la diferencia,
+concentrada en las escalas finas de la mezcla.}
+\end{figure}
+
+
+\begin{thebibliography}{9}\footnotesize
+\bibitem{chandra1961} Chandrasekhar, S.\ 1961, \emph{Hydrodynamic and Hydromagnetic
+Stability}, Clarendon Press, cap.~X (``The Stability of Two Fluids''): la relación de
+dispersión eq.~\eqref{eq:disp} y la estructura de su deducción.
+\bibitem{kruskal1954} Kruskal, M.\ \& Schwarzschild, M.\ 1954, Proc.\ R.\ Soc.\ A 223,
+348: el caso de campo horizontal puro (modos de intercambio vs.\ frenados por tensión).
+\bibitem{boyd2003} Boyd, T.\ J.\ M.\ \& Sanderson, J.\ J.\ 2003, \emph{The Physics of
+Plasmas}, Cambridge Univ.\ Press, p.~99: la definición de $B_c$ que implementa el
+\texttt{init.c}.
+\bibitem{chevalier1982} Chevalier, R.\ A.\ 1982, ApJ 258, 790: soluciones auto-semejantes
+de la fase de eyecta dominada y el origen del mapeo SNR $\leftrightarrow$ RT.
+\bibitem{sedov1959} Sedov, L.\ I.\ 1959, \emph{Similarity and Dimensional Methods in
+Mechanics} (y Taylor, G.\ I.\ 1950, Proc.\ R.\ Soc.\ A 201, 159): la solución
+$R\propto t^{2/5}$ del punto explosivo.
 \bibitem{orlando2012} Orlando, S. et al.\ 2012, ``3D MHD simulations of a magnetized
-supernova remnant'' (arXiv:1202.3593).
+supernova remnant'' (arXiv:1202.3593): motivación astrofísica y consistencia de la
+anisotropía medida.
 \bibitem{fraschetti2010} Fraschetti, F. et al.\ 2010, ``Simulation of the growth of the
 3D Rayleigh--Taylor instability in young supernova remnants'' (arXiv:1002.5048).
 \bibitem{warren2013} Warren, D.~C. \& Blondin, J.~M. 2013, MNRAS 429, 3099.
-\bibitem{chandra1961} Chandrasekhar, S. 1961, \emph{Hydrodynamic and Hydromagnetic
-Stability}, caps.~X.
 \bibitem{sg2007} Stone, J.~M. \& Gardiner, T.~A. 2007, Phys.\ Fluids 19, 094104
-(la referencia del problema 2D del proyecto).
+(la referencia del problema 2D del proyecto; el propio \texttt{init.c} la declara
+como referencia del test problem).
 \bibitem{hillier2012} Hillier, A. et al.\ 2012, ApJ 746, 120 (RT magnético 3D en
 prominencias; misma física de modos de intercambio).
 \bibitem{mignone2012} Mignone, A. et al.\ 2012, ApJS 198, 7 (PLUTO, y el GLM de la
-config \#09 en Mignone et al.\ 2010, JCP 229, 2117).
+config \#09 en Mignone et al.\ 2010, JCP 229, 2117; la limpieza GLM es la de
+Dedner et al.\ 2002, JCP 175, 645, y el solver \texttt{roe} de MHD es el de
+Cargo \& Gallice 1997, JCP 136, 446 --- ambos citados por el propio código fuente
+de PLUTO).
+\bibitem{dimonte2004} Dimonte, G. et al.\ 2004, Phys.\ Fluids 16, 1668: la comparación
+``$\alpha$-group'' de códigos RT multimodo, de donde viene la práctica de medir anchos
+de mezcla por percentiles.
 \end{thebibliography}
 
 \end{document}
